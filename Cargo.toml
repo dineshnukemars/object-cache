@@ -1,8 +1,10 @@
 [package]
 name = "object-cache"
 version = "0.1.0"
+authors = ["dinesh"]
 edition = "2021"
-
+description = "save or get object from file cache"
+license = "MIT License"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
