@@ -1,9 +1,10 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, format};
+use std::fs::OpenOptions;
 
 use log::info;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use sqlx::{Pool, Sqlite};
+use sqlx::{Pool, Sqlite, SqlitePool};
 use sqlx::{Execute, Executor, QueryBuilder, Row};
 
 use crate::app_db::crud_ops::{create_table, drop_table};
@@ -19,9 +20,24 @@ pub trait DbCache {
     fn get_cache_name() -> String;
 }
 
-pub async fn init_db(connection_pool: &Pool<Sqlite>) {
-    drop_table(connection_pool).await.expect("Could not drop table to clear previous server session");
-    create_table(connection_pool).await.expect("Could not able to create the Cache table");
+pub async fn init_db(name: &str) -> Pool<Sqlite> {
+    OpenOptions::new()
+        .write(true)  // Enable writing to the file.
+        .create(true) // Create the file if it doesn't exist.
+        .open(format!("{}.db",name)).unwrap();
+
+    let db_url = format!("sqlite://{}.db", name);
+
+    let conn_pool = SqlitePool::connect(&db_url)
+        .await
+        .unwrap();
+
+    create_table(&conn_pool).await.expect("Could not able to create the Cache table");
+    conn_pool
+}
+
+pub async fn clear_db(conn_pool: &Pool<Sqlite>) {
+    drop_table(conn_pool).await.expect("Could not drop table to clear previous server session");
 }
 
 pub async fn save<T>(connection_pool: &Pool<Sqlite>, obj: &T) -> Result<(), AppError>
@@ -55,26 +71,45 @@ pub async fn get<T>(connection_pool: &Pool<Sqlite>) -> Result<T, AppError>
 
 #[cfg(test)]
 mod tests {
+    use log::debug;
+    use serde::Deserialize;
     use sqlx::SqlitePool;
 
     use crate::app_db::crud_ops::create_table;
-    use crate::session::ClientSessionData;
-    use crate::utils::init_log;
+    use crate::init_log;
 
     use super::*;
+
+    #[derive(Serialize, Deserialize, Debug)]
+    struct TestStruct {
+        name: String,
+        email: String,
+        ph_no: u64,
+    }
+
+    impl DbCache for TestStruct {
+        fn get_cache_name() -> String {
+            "TestStruct".to_owned()
+        }
+    }
 
     #[tokio::test]
     async fn insert_and_retrieve_from_cache() {
         init_log();
 
-        let connection_pool: Pool<Sqlite> = SqlitePool::connect("sqlite::memory:").await.unwrap();
-        create_table(&connection_pool).await.unwrap();
+        // let connection_pool: Pool<Sqlite> = SqlitePool::connect("sqlite::memory:").await.unwrap();
+        let conn_pool = init_db("test_cache").await;
+        create_table(&conn_pool).await.unwrap();
 
-        let session_data = ClientSessionData::new("112", "Medi");
-        session_data.save_to_cache(&connection_pool);
-        save(&connection_pool, &session_data).await.unwrap();
+        let data = TestStruct {
+            name: "dinesh".to_owned(),
+            email: "dinesh".to_owned(),
+            ph_no: 9999999999u64,
+        };
 
-        let cache: ClientSessionData = get(&connection_pool).await.unwrap();
-        debug!("\n\ndeserialized data 'ClientSessionData' from cache ->\n\n{:?}\n", cache);
+        save(&conn_pool, &data).await.unwrap();
+
+        let cache: TestStruct = get(&conn_pool).await.unwrap();
+        debug!("\n\ndeserialized data 'TestStruct' from cache ->\n\n{:?}\n", cache);
     }
 }

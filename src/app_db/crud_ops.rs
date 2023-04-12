@@ -1,3 +1,4 @@
+use log::debug;
 use sqlx::{Executor, Pool, Sqlite};
 
 use crate::app_error::{AppError, MapError};
@@ -127,9 +128,8 @@ pub async fn print_all_cache(list_of_rows: &Vec<CacheData>) -> Result<(), AppErr
 #[cfg(test)]
 mod tests {
     use sqlx::SqlitePool;
+    use crate::init_log;
 
-    use crate::session::ClientSessionData;
-    use crate::utils::init_log;
 
     use super::*;
 
