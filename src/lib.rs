@@ -27,24 +27,47 @@ fn format_log_fn(buf: &mut Formatter, record: &Record) -> std::io::Result<()> {
     writeln!(buf, "{}", record.args())
 }
 
-pub fn parse_json<T>(json_str: &str) -> Result<T, AppError> where T: Debug + DeserializeOwned {
-    let err_msg = "Error while converting json to Object type";
-    let result: T = serde_json::from_str::<T>(&json_str).map_to_app_error(err_msg)?;
-    info!("{:?}",&result);
-    Ok(result)
-}
-
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
 
 #[cfg(test)]
 mod tests {
+    use log::debug;
+    use serde::{Deserialize, Serialize};
+    use crate::app_db::{DbCache, get, init_db, save};
     use super::*;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+
+    #[derive(Serialize, Deserialize, Debug)]
+    struct TestStruct {
+        name: String,
+        email: String,
+        ph_no: u64,
+    }
+
+    impl DbCache for TestStruct {
+        fn get_cache_name() -> String {
+            "TestStruct".to_owned()
+        }
+    }
+
+    #[tokio::test]
+    async fn insert_and_retrieve_from_cache() {
+        init_log();
+
+        // let connection_pool: Pool<Sqlite> = SqlitePool::connect("sqlite::memory:").await.unwrap();
+        let conn_pool = init_db("test_cache").await;
+
+        let data = TestStruct {
+            name: "dinesh".to_owned(),
+            email: "dinesh".to_owned(),
+            ph_no: 9999999999u64,
+        };
+
+        save(&conn_pool, &data).await.unwrap();
+
+        let cache: TestStruct = get(&conn_pool).await.unwrap();
+        debug!("\n\ndeserialized data 'TestStruct' from cache ->\n\n{:?}\n", cache);
     }
 }
