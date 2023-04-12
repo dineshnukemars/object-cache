@@ -40,8 +40,9 @@ pub async fn clear_db(conn_pool: &Pool<Sqlite>) {
     drop_table(conn_pool).await.expect("Could not drop table to clear previous server session");
 }
 
-pub async fn save<T>(connection_pool: &Pool<Sqlite>, obj: &T) -> Result<(), AppError>
+pub async fn save_or_replace<T>(connection_pool: &Pool<Sqlite>, obj: &T) -> Result<(), AppError>
     where T: ?Sized + Serialize + DeserializeOwned + Debug + DbCache {
+
     let cache_name = T::get_cache_name();
     let content = obj_to_json(obj)?;
     insert_into_db(&connection_pool, &cache_name, &content).await?;
@@ -60,7 +61,7 @@ pub async fn save_if_not_exist<T>(connection_pool: &Pool<Sqlite>, obj: &T) -> Re
     Ok(())
 }
 
-pub async fn get<T>(connection_pool: &Pool<Sqlite>) -> Result<T, AppError>
+pub async fn get_obj<T>(connection_pool: &Pool<Sqlite>) -> Result<T, AppError>
     where T: ?Sized + Serialize + DeserializeOwned + Debug + DbCache {
     let cache_name = T::get_cache_name();
     let cache: CacheData = select_from_db(&connection_pool, &cache_name).await?;

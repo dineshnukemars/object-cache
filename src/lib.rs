@@ -35,7 +35,7 @@ pub fn add(left: usize, right: usize) -> usize {
 mod tests {
     use log::debug;
     use serde::{Deserialize, Serialize};
-    use crate::app_db::{DbCache, get, init_db, save};
+    use crate::app_db::{DbCache, get_obj, init_db, save_or_replace};
     use super::*;
 
 
@@ -57,7 +57,7 @@ mod tests {
         init_log();
 
         // let connection_pool: Pool<Sqlite> = SqlitePool::connect("sqlite::memory:").await.unwrap();
-        let conn_pool = init_db("test_cache").await;
+        let conn_pool = init_db("obj_cache").await;
 
         let data = TestStruct {
             name: "dinesh".to_owned(),
@@ -65,9 +65,9 @@ mod tests {
             ph_no: 9999999999u64,
         };
 
-        save(&conn_pool, &data).await.unwrap();
+        save_or_replace(&conn_pool, &data).await.unwrap();
 
-        let cache: TestStruct = get(&conn_pool).await.unwrap();
+        let cache: TestStruct = get_obj(&conn_pool).await.unwrap();
         debug!("\n\ndeserialized data 'TestStruct' from cache ->\n\n{:?}\n", cache);
     }
 }
