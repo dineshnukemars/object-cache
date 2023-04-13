@@ -129,8 +129,8 @@ pub async fn print_all_cache(list_of_rows: &Vec<CacheData>) -> Result<(), CacheE
 #[cfg(test)]
 mod tests {
     use sqlx::SqlitePool;
-    use crate::init_log;
 
+    use crate::init_log;
 
     use super::*;
 
