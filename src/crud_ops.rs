@@ -1,7 +1,7 @@
 use log::debug;
 use sqlx::{Executor, Pool, Sqlite};
 
-use crate::app_error::{AppError, MapError};
+use crate::cache_error::{CacheError, MapError};
 
 const TABLE_NAME: &str = "cache";
 
@@ -11,24 +11,24 @@ pub struct CacheData {
     pub content: String,
 }
 
-pub async fn drop_table(connection_pool: &Pool<Sqlite>) -> Result<(), AppError> {
+pub async fn drop_table(connection_pool: &Pool<Sqlite>) -> Result<(), CacheError> {
     let sql = format!("DROP TABLE IF EXISTS {TABLE_NAME:?}");
     connection_pool
         .execute(sql.as_str())
         .await
-        .map_to_app_error(&format!("Could not Drop DB table {:?}", TABLE_NAME))?;
+        .map_to_cache_error(&format!("Could not Drop DB table {:?}", TABLE_NAME))?;
     debug!("Table {} dropped successfully!😢", TABLE_NAME);
     Ok(())
 }
 
-pub async fn create_table(connection_pool: &Pool<Sqlite>) -> Result<(), AppError> {
+pub async fn create_table(connection_pool: &Pool<Sqlite>) -> Result<(), CacheError> {
     let create_table_query = format!("CREATE TABLE IF NOT EXISTS {} (name text PRIMARY KEY,content text);", TABLE_NAME);
     debug!("\n\nquery -> {}",create_table_query);
 
     sqlx::query(&create_table_query)
         .execute(connection_pool)
         .await
-        .map_to_app_error("Could not create table")?;
+        .map_to_cache_error("Could not create table")?;
 
     debug!("{} table created!! 😀\n",TABLE_NAME);
     Ok(())
@@ -38,58 +38,59 @@ pub async fn insert_into_db(
     connection_pool: &Pool<Sqlite>,
     cache_name: &str,
     content: &str,
-) -> Result<(), AppError> {
+) -> Result<(), CacheError> {
     let insert_query = format!("INSERT INTO {TABLE_NAME}(name, content) values ('{cache_name}','{content}') on conflict(name) do update set content=excluded.content");
     debug!("\nQuery -> {}",insert_query);
 
     sqlx::query(&insert_query)
         .execute(connection_pool)
         .await
-        .map_to_app_error("Could not insert into DB!")?;
+        .map_to_cache_error("Could not insert into DB!")?;
 
     debug!("data inserted! 😇\n");
     Ok(())
 }
 
-pub async fn insert_into_db_if_not_exist(connection_pool: &Pool<Sqlite>, cache_name: &str, content: &str) -> Result<(), AppError> {
+pub async fn insert_into_db_if_not_exist(connection_pool: &Pool<Sqlite>, cache_name: &str, content: &str) -> Result<(), CacheError> {
     let query = format!("INSERT OR IGNORE INTO {TABLE_NAME:?}(name, content) values ('{}','{}') on conflict(name) do update set content=excluded.content", &cache_name, &content);
     debug!("\nQuery -> {}",query);
 
     sqlx::query(&query)
         .execute(connection_pool)
         .await
-        .map_to_app_error("Could not insert into DB!")?;
+        .map_to_cache_error("Could not insert into DB!")?;
 
     debug!("data inserted! 😇\n");
     Ok(())
 }
 
-pub async fn select_from_db(connection_pool: &Pool<Sqlite>, cache_name: &str) -> Result<CacheData, AppError> {
+pub async fn select_from_db(connection_pool: &Pool<Sqlite>, cache_name: &str) -> Result<CacheData, CacheError> {
     let query = format!("SELECT * FROM {TABLE_NAME:?} where name = '{}'", cache_name);
     debug!("Query -> {}",query);
 
     let cache: CacheData = sqlx::query_as(&query)
         .fetch_one(connection_pool)
         .await
-        .map_to_app_error(&format!("Could not retrieve cache for name {}", cache_name))?;
+        .map_to_cache_error(&format!("Could not retrieve cache for name {}", cache_name))?;
 
     debug!("content from db for cache:🧐 {} ->\n\n{:?}", cache_name, cache);
     Ok(cache)
 }
 
-pub async fn select_all_from_cache(connection_pool: &Pool<Sqlite>) -> Result<Vec<CacheData>, AppError> {
+pub async fn select_all_from_cache(connection_pool: &Pool<Sqlite>) -> Result<Vec<CacheData>, CacheError> {
     let query = format!("SELECT * FROM {:?}", TABLE_NAME);
     debug!("\nQuery -> {}\n",query);
 
     let list_of_rows: Vec<CacheData> = sqlx::query_as(&query)
         .fetch_all(connection_pool)
         .await
-        .map_to_app_error("Could not retrieve data from Database")?;
+        .map_to_cache_error("Could not retrieve data from Database")?;
+
     Ok(list_of_rows)
 }
 
 
-pub async fn print_all_cache(list_of_rows: &Vec<CacheData>) -> Result<(), AppError> {
+pub async fn print_all_cache(list_of_rows: &Vec<CacheData>) -> Result<(), CacheError> {
     const NAME_HEADER: &str = "Name";
     const CONTENT_HEADER: &str = "Content";
 
