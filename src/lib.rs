@@ -91,7 +91,7 @@ impl Cache {
         Ok(res)
     }
 
-    async fn clear_cache(&self) {
+    pub async fn clear_cache(&self) {
         drop_table(&self.conn_pool).await.expect("Could not drop table to clear previous server session");
     }
 }
