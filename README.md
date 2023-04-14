@@ -12,42 +12,42 @@
 
 <pre>
 <code class="language-rust">
-        async fn sample(){
-            // build Cache with name (Could be In memory or File based cache)
-            let cache = Cache::build(true, "obj_cache").await;
+async fn sample(){
+    // build Cache with name (Could be In memory or File based cache)
+    let cache = Cache::build(true, "obj_cache").await;
 
-            let data = TestStruct {
-            name: "dinesh".to_owned(),
-            email: "dinesh.nuke.mars@gmail.com".to_owned(),
-            ph_no: 9999999999u64,
-            };
+    let data = TestStruct {
+        name: "dinesh".to_owned(),
+        email: "dinesh.nuke.mars@gmail.com".to_owned(),
+        ph_no: 9999999999u64,
+    };
 
-            // pass key and object
-            cache.save_obj("TestData", &data).await.unwrap();
+    // pass key and object
+    cache.save_obj("TestData", &data).await.unwrap();
 
-            // visualize the data
-            cache.pretty_print_all_cache();
+    // visualize the data
+    cache.pretty_print_all_cache();
 
-            // get object anywhere in the project using key
-            let cached_data: TestStruct = cache.get_obj("TestData").await.unwrap();
-        }
+    // get object anywhere in the project using key
+    let cached_data: TestStruct = cache.get_obj("TestData").await.unwrap();
+}
 </code>
 </pre>
 
 <h2>Main Functions</h2>
 
 <pre>
-    <code class="language-rust">
-        Cache {
-            pub async fn build(in_memory: bool, cache_file_name: &str) -> Self 
-            pub async fn save_obj&lt;T&gt(&self, key: &str, obj: &T) -&gt Result&lt;(), CacheError
-            pub async fn save_obj_if_not_exist&lt;T&gt(&self, key: &str, obj: &T) -&gt Result&lt;(), CacheError
-            pub async fn get_obj&lt;T&gt(&self, key: &str) -&gt Result&lt;T, CacheError
-            pub async fn get_all_objs(&self) -&gt Result&lt;Vec&lt;CacheData&gt, CacheError&gt 
-            pub async fn pretty_print_all_cache(&self) 
-            pub async fn clear_cache(&self) 
-        }
-    </code>
+<code class="language-rust">
+Cache {
+    pub async fn build(in_memory: bool, cache_file_name: &str) -> Self 
+    pub async fn save_obj&lt;T&gt(&self, key: &str, obj: &T) -&gt Result&lt;(), CacheError
+    pub async fn save_obj_if_not_exist&lt;T&gt(&self, key: &str, obj: &T) -&gt Result&lt;(), CacheError
+    pub async fn get_obj&lt;T&gt(&self, key: &str) -&gt Result&lt;T, CacheError
+    pub async fn get_all_objs(&self) -&gt Result&lt;Vec&lt;CacheData&gt, CacheError&gt 
+    pub async fn pretty_print_all_cache(&self) 
+    pub async fn clear_cache(&self) 
+}
+</code>
 </pre>
 
 <p>For more detailed usage instructions, visit the <a href="https://github.com/dineshnukemars/object-cache" target="_new">GitHub repository</a>.</p>
