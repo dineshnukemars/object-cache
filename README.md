@@ -11,7 +11,8 @@
 <h2>Usage</h2>
 
 <pre>
-        <code>
+<code class="language-rust">
+        async fn sample(){
             // build Cache with name (Could be In memory or File based cache)
             let cache = Cache::build(true, "obj_cache").await;
 
@@ -29,14 +30,14 @@
 
             // get object anywhere in the project using key
             let cached_data: TestStruct = cache.get_obj("TestData").await.unwrap();
-
-        </code>
+        }
+</code>
 </pre>
 
 <h2>Main Functions</h2>
 
 <pre>
-    <code>
+    <code class="language-rust">
         Cache {
             pub async fn build(in_memory: bool, cache_file_name: &str) -> Self 
             pub async fn save_obj&lt;T&gt(&self, key: &str, obj: &T) -&gt Result&lt;(), CacheError
