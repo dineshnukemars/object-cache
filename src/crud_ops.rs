@@ -90,7 +90,7 @@ pub async fn select_all_from_cache(connection_pool: &Pool<Sqlite>) -> Result<Vec
 }
 
 
-pub async fn print_all_cache(list_of_rows: &Vec<CacheData>) -> Result<(), CacheError> {
+pub fn print_all_cache(list_of_rows: &Vec<CacheData>){
     const NAME_HEADER: &str = "Name";
     const CONTENT_HEADER: &str = "Content";
 
@@ -122,7 +122,6 @@ pub async fn print_all_cache(list_of_rows: &Vec<CacheData>) -> Result<(), CacheE
         );
     }
     debug!("\nEnd----------------------🧐\n");
-    Ok(())
 }
 
 
@@ -146,6 +145,6 @@ mod tests {
         insert_into_db(&connection_pool, "Dinesh_Cache", r#"dummy content: {"test":"data"}"#).await.unwrap();
 
         let cache_list = select_all_from_cache(&connection_pool).await.unwrap();
-        print_all_cache(&cache_list).await.unwrap();
+        print_all_cache(&cache_list);
     }
 }

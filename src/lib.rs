@@ -37,25 +37,28 @@ fn format_log_fn(buf: &mut Formatter, record: &Record) -> std::io::Result<()> {
 mod map_data;
 mod crud_ops;
 
-
+/// Main Struct for Cache
 #[derive(Debug, Clone)]
 pub struct Cache {
     conn_pool: Pool<Sqlite>,
 }
 
 impl Cache {
-    pub async fn build(in_memory: bool, name: &str) -> Self {
+    ///build cache storage
+    /// if in_memory = true, will create cache that will be erased after application closed
+    /// if in_memory = false, will create a file in the project folder itself to store data
+    pub async fn build(in_memory: bool, cache_file_name: &str) -> Self {
         OpenOptions::new()
             .write(true)  // Enable writing to the file.
             .create(true) // Create the file if it doesn't exist.
-            .open(format!("{}.db", name)).unwrap();
+            .open(format!("{}.db", cache_file_name)).unwrap();
 
         let conn_pool = if in_memory {
             SqlitePool::connect("sqlite::memory:")
                 .await
                 .unwrap()
         } else {
-            SqlitePool::connect(&format!("sqlite://{}.db", name))
+            SqlitePool::connect(&format!("sqlite://{}.db", cache_file_name))
                 .await
                 .unwrap()
         };
@@ -64,33 +67,42 @@ impl Cache {
         Cache { conn_pool }
     }
 
-    pub async fn save_obj<T>(&self, cache_name: &str, obj: &T) -> Result<(), CacheError>
+    /// save object with key, if already exist this will replace
+    pub async fn save_obj<T>(&self, key: &str, obj: &T) -> Result<(), CacheError>
         where T: ?Sized + Serialize + DeserializeOwned + Debug {
         let content = obj_to_json(obj)?;
-        insert_into_db(&self.conn_pool, cache_name, &content).await?;
-        let cache_list = select_all_from_cache(&self.conn_pool).await?;
-        print_all_cache(&cache_list).await?;
+        insert_into_db(&self.conn_pool, key, &content).await?;
+        Ok(())
+    }
+
+    /// save object with key, if already exist this will be ignored
+    pub async fn save_obj_if_not_exist<T>(&self, key: &str, obj: &T) -> Result<(), CacheError>
+        where T: ?Sized + Serialize + DeserializeOwned + Debug {
+        let content = obj_to_json(obj)?;
+        insert_into_db_if_not_exist(&self.conn_pool, key, &content).await?;
         Ok(())
     }
 
 
-    pub async fn save_obj_if_not_exist<T>(&self, cache_name: &str, obj: &T) -> Result<(), CacheError>
+    /// will retrieve the object for the key
+    pub async fn get_obj<T>(&self, key: &str) -> Result<T, CacheError>
         where T: ?Sized + Serialize + DeserializeOwned + Debug {
-        let content = obj_to_json(obj)?;
-        insert_into_db_if_not_exist(&self.conn_pool, cache_name, &content).await?;
-        let cache_list = select_all_from_cache(&self.conn_pool).await?;
-        print_all_cache(&cache_list).await?;
-        Ok(())
-    }
-
-
-    pub async fn get_obj<T>(&self, cache_name: &str) -> Result<T, CacheError>
-        where T: ?Sized + Serialize + DeserializeOwned + Debug {
-        let cache: CacheData = select_from_db(&self.conn_pool, cache_name).await?;
-        let res = json_to_obj::<T>(cache_name, &cache.content)?;
+        let cache: CacheData = select_from_db(&self.conn_pool, key).await?;
+        let res = json_to_obj::<T>(key, &cache.content)?;
         Ok(res)
     }
 
+    /// get all saved objects from the Cache
+    pub async fn get_all_objs(&self) -> Result<Vec<CacheData>, CacheError> {
+        let cache_list = select_all_from_cache(&self.conn_pool).await?;
+        Ok(cache_list)
+    }
+
+    pub async fn pretty_print_all_cache(&self) {
+        let cache_list = self.get_all_objs().await.unwrap();
+        print_all_cache(&cache_list);
+    }
+    /// clears all cache data
     pub async fn clear_cache(&self) {
         drop_table(&self.conn_pool).await.expect("Could not drop table to clear previous server session");
     }
@@ -123,6 +135,8 @@ mod tests {
         };
 
         cache.save_obj("TestData", &data).await.unwrap();
+
+        cache.pretty_print_all_cache();
 
         let cached_data: TestStruct = cache.get_obj("TestData").await.unwrap();
         debug!("\n\ndeserialized data 'TestStruct' from cache ->\n\n{:?}\n", cached_data);
