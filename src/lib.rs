@@ -5,7 +5,7 @@ use std::io::Write;
 
 use env_logger::{Builder, WriteStyle};
 use env_logger::fmt::Formatter;
-use log::{info, Level, LevelFilter, Record};
+use log::{debug, info, Level, LevelFilter, Record};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use sqlx::{Pool, Sqlite, SqlitePool};
@@ -19,12 +19,13 @@ pub mod cache_error;
 
 
 fn init_log() {
-    Builder::from_default_env()
+    let result = Builder::from_default_env()
         .filter(None, LevelFilter::Debug)
         .format(format_log_fn)
         .format_timestamp(None)
         .write_style(WriteStyle::Always)
-        .init();
+        .try_init();
+    debug!("logger init - {:?}", result)
 }
 
 fn format_log_fn(buf: &mut Formatter, record: &Record) -> std::io::Result<()> {
@@ -67,6 +68,31 @@ impl Cache {
         Cache { conn_pool }
     }
 
+    pub async fn build_simple(cache_file_name: Option<String>) -> Result<Cache, CacheError> {
+        let conn_pool: Pool<Sqlite> = match cache_file_name {
+            None => {
+                SqlitePool::connect("sqlite::memory:")
+                    .await
+                    .unwrap()
+            }
+            Some(name) => {
+                let file_path = format!("{}.db", name);
+                let error_msg = format!("Couldn't create or open file: {}", &file_path);
+                OpenOptions::new()
+                    .write(true)  // Enable writing to the file.
+                    .create(true) // Create the file if it doesn't exist.
+                    .open(&file_path)
+                    .map_to_cache_error(&error_msg)?;
+
+                SqlitePool::connect(&format!("sqlite://{}", file_path))
+                    .await
+                    .unwrap()
+            }
+        };
+        create_table(&conn_pool).await.expect("Could not able to create the Cache table");
+        Ok(Cache { conn_pool })
+    }
+
     /// save object with key, if already exist this will replace
     pub async fn save_obj<T>(&self, key: &str, obj: &T) -> Result<(), CacheError>
         where T: ?Sized + Serialize + DeserializeOwned + Debug {
@@ -82,7 +108,6 @@ impl Cache {
         insert_into_db_if_not_exist(&self.conn_pool, key, &content).await?;
         Ok(())
     }
-
 
     /// will retrieve the object for the key
     pub async fn get_obj<T>(&self, key: &str) -> Result<T, CacheError>
@@ -126,7 +151,28 @@ mod tests {
     async fn insert_and_retrieve_from_cache() {
         init_log();
 
-        let cache = Cache::build(true, "obj_cache").await;
+        let cache = Cache::build_simple(None).await.unwrap();
+
+        let data = TestStruct {
+            name: "dinesh".to_owned(),
+            email: "dinesh".to_owned(),
+            ph_no: 9999999999u64,
+        };
+
+        cache.save_obj("TestData", &data).await.unwrap();
+
+        cache.pretty_print_all_cache();
+
+        let cached_data: TestStruct = cache.get_obj("TestData").await.unwrap();
+        debug!("\n\ndeserialized data 'TestStruct' from cache ->\n\n{:?}\n", cached_data);
+        cache.clear_cache();
+    }
+
+    #[tokio::test]
+    async fn test_cache_retrieval() {
+        init_log();
+
+        let cache = Cache::build_simple(None).await.unwrap();
 
         let data = TestStruct {
             name: "dinesh".to_owned(),

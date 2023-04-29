@@ -1,6 +1,6 @@
 [package]
 name = "object-cache"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["dinesh"]
 edition = "2021"
 description = "save or get object from file cache"
